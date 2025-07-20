@@ -1,7 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { writeFile, mkdir } from "fs/promises"
-import { existsSync } from "fs"
-import path from "path"
+import { put } from "@vercel/blob"
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,41 +23,61 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "File size must be less than 5MB" }, { status: 400 })
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = path.join(process.cwd(), "public", "uploads")
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
-      console.log("Created uploads directory:", uploadsDir)
-    }
-
     // Generate unique filename
     const timestamp = Date.now()
     const randomString = Math.random().toString(36).substring(2, 8)
-    const extension = path.extname(file.name)
-    const filename = `${category || "general"}-${timestamp}-${randomString}${extension}`
+    const extension = file.name.split(".").pop() || "jpg"
+    const filename = `${category || "general"}-${timestamp}-${randomString}.${extension}`
 
-    // Convert file to buffer and save
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    const filepath = path.join(uploadsDir, filename)
+    try {
+      // Upload to Vercel Blob
+      const blob = await put(filename, file, {
+        access: "public",
+      })
 
-    await writeFile(filepath, buffer)
+      console.log("File uploaded successfully to Vercel Blob:", {
+        originalName: file.name,
+        savedAs: filename,
+        url: blob.url,
+        size: file.size,
+      })
 
-    // Return the public URL
-    const imageUrl = `/uploads/${filename}`
+      return NextResponse.json({
+        success: true,
+        url: blob.url,
+        filename: filename,
+      })
+    } catch (blobError) {
+      console.error("Vercel Blob upload error:", blobError)
 
-    console.log("File uploaded successfully:", {
-      originalName: file.name,
-      savedAs: filename,
-      url: imageUrl,
-      size: file.size,
-    })
+      // Fallback: Try to save locally (for development)
+      if (process.env.NODE_ENV === "development") {
+        const { writeFile, mkdir } = await import("fs/promises")
+        const { existsSync } = await import("fs")
+        const path = await import("path")
 
-    return NextResponse.json({
-      success: true,
-      url: imageUrl,
-      filename: filename,
-    })
+        const uploadsDir = path.join(process.cwd(), "public", "uploads")
+        if (!existsSync(uploadsDir)) {
+          await mkdir(uploadsDir, { recursive: true })
+        }
+
+        const bytes = await file.arrayBuffer()
+        const buffer = Buffer.from(bytes)
+        const filepath = path.join(uploadsDir, filename)
+        await writeFile(filepath, buffer)
+
+        const imageUrl = `/uploads/${filename}`
+        console.log("File uploaded locally (development):", imageUrl)
+
+        return NextResponse.json({
+          success: true,
+          url: imageUrl,
+          filename: filename,
+        })
+      }
+
+      throw blobError
+    }
   } catch (error) {
     console.error("Upload error:", error)
     return NextResponse.json(
