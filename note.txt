@@ -1,0 +1,16 @@
+1. Please remove the debug panel from the entire project.
+
+2. In the Blog section, new blog posts are not displaying after submission. Please fix the issue.
+
+3. On the Homepage, add an option to change the background image for the section that shows:
+   “Explore Our Products” and “Discover Our Passion for RC Products.”
+
+4. On the Cart page, the "Proceed to Checkout" and "Continue Shopping" buttons need a little space between them (not mandatory but would look better).
+
+5. In the Admin Dashboard, please review the Users section — it seems to be using static data instead of actual data from the database.
+
+6. During account creation, it seems the user is not being saved to the database — please verify and fix this if needed.
+
+7. Maybe Picture is not adding on Database.
+
+7. If you notice anything else that needs improvement or fixing, feel free to change or update it.
